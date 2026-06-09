@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { bgg as bggApi } from '../api/client';
 
 // Gradient palette — mirrors the prototype's GR array.
 const GR = [
@@ -39,26 +40,22 @@ export default function GameCard({ g, featured = false }) {
 
   const [thumbUrl, setThumbUrl] = useState(() => bggThumbCache[g.bggId] ?? null);
 
-  // Fetch BGG thumbnail from browser when API has no image
+  // Fetch BGG thumbnail via our backend proxy (avoids CORS/401 from direct BGG calls).
   useEffect(() => {
     if (g.imageUrl || thumbUrl || !g.bggId) return;
     if (bggThumbCache[g.bggId] !== undefined) {
-      setThumbUrl(bggThumbCache[g.bggId]);
+      if (bggThumbCache[g.bggId]) setThumbUrl(bggThumbCache[g.bggId]);
       return;
     }
-    // Mark as in-flight so sibling cards don't double-fetch
+    // Mark as in-flight so sibling cards with the same bggId don't double-fetch.
     bggThumbCache[g.bggId] = null;
     let cancelled = false;
-    fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${g.bggId}`)
-      .then(r => r.text())
-      .then(xml => {
+    bggApi.image(g.bggId)
+      .then(r => {
         if (cancelled) return;
-        const doc    = new DOMParser().parseFromString(xml, 'text/xml');
-        const thumbEl = doc.querySelector('thumbnail');
-        const src    = thumbEl?.textContent?.trim();
-        const url    = src ? (src.startsWith('//') ? 'https:' + src : src) : null;
+        const url = r.thumbnailUrl || r.imageUrl || null;
         bggThumbCache[g.bggId] = url;
-        setThumbUrl(url);
+        if (url) setThumbUrl(url);
       })
       .catch(() => {});
     return () => { cancelled = true; };

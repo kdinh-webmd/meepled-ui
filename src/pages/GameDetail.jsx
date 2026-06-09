@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { games as gamesApi, wishlist as wishlistApi, comments as commentsApi } from '../api/client';
+import { games as gamesApi, wishlist as wishlistApi, comments as commentsApi, bgg as bggApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { gameGrad, gameEmoji } from '../components/GameCard';
 
@@ -36,21 +36,14 @@ export default function GameDetail() {
     gamesApi.get(id).then(setGame).catch(e => setError(e.message));
   }, [id]);
 
-  // When imageUrl is missing from the API, fetch it directly from BGG in the browser.
-  // This bypasses any server-side network restrictions — BGG allows browser CORS.
+  // When imageUrl is missing from the API, fetch it via our backend proxy.
+  // Our server calls BGG with a browser-like User-Agent; the browser calls us
+  // (CORS is configured), so neither BGG's CORS block nor IP-level 401 applies.
   useEffect(() => {
     if (!game?.bggId || game.imageUrl) return;
     let cancelled = false;
-    fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${game.bggId}`)
-      .then(r => r.text())
-      .then(xml => {
-        if (cancelled) return;
-        const doc    = new DOMParser().parseFromString(xml, 'text/xml');
-        const imgEl  = doc.querySelector('image');
-        const thumbEl = doc.querySelector('thumbnail');
-        const src    = imgEl?.textContent?.trim() || thumbEl?.textContent?.trim();
-        if (src) setBggImageUrl(src.startsWith('//') ? 'https:' + src : src);
-      })
+    bggApi.image(game.bggId)
+      .then(r => { if (!cancelled && r.imageUrl) setBggImageUrl(r.imageUrl); })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [game?.bggId, game?.imageUrl]);

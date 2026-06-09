@@ -84,3 +84,8 @@ export const cafeGames = {
   update: (id, data) => api.patch(`/api/cafe-games/${id}`, data),
   remove: (id) => api.del(`/api/cafe-games/${id}`),
 };
+
+// BGG proxy — browser calls our API; our server calls BGG (avoids CORS/401).
+export const bgg = {
+  image: (bggId) => api.get(`/api/bgg/image/${bggId}`, { auth: false }),
+};
