@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import NavBar from './components/NavBar';
+import Footer from './components/Footer';
 import { useAuth } from './context/AuthContext';
 import Home from './pages/Home';
 import CafeLibrary from './pages/CafeLibrary';
@@ -24,6 +25,7 @@ export default function App() {
       <NavBar />
       <main className="container">
         <Routes>
+
           <Route path="/" element={<Home />} />
           <Route path="/cafes/:id" element={<CafeLibrary />} />
           <Route path="/games/:id" element={<GameDetail />} />
@@ -49,6 +51,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      <Footer />
     </>
   );
 }

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { cafes as cafesApi } from '../api/client';
+import { cafes as cafesApi, reviews as reviewsApi } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import GameCard from '../components/GameCard';
 
 const GR = [
@@ -14,32 +15,56 @@ const GR = [
 ];
 const AV = ['#c0623a','#6b7d5a','#917256','#a8502c','#7a4a3a','#996b3d','#5b7d8a'];
 function cafeGrad(name) { return GR[(name?.charCodeAt(0) ?? 0) % GR.length]; }
-function avColor(name) { return AV[(name?.charCodeAt(0) ?? 0) % AV.length]; }
+function avColor(name)  { return AV[(name?.charCodeAt(0) ?? 0) % AV.length]; }
 const starStr = n => '★★★★★'.slice(0, Math.round(n)) + '☆☆☆☆☆'.slice(0, 5 - Math.round(n));
 
 export default function CafeLibrary() {
-  const { id } = useParams();
-  const { t } = useTranslation();
-  const [cafe, setCafe] = useState(null);
-  const [error, setError] = useState(null);
-  const [libQ, setLibQ] = useState('');
+  const { id }  = useParams();
+  const { t }   = useTranslation();
+  const { isAuthenticated, user } = useAuth();
+
+  const [cafe,          setCafe]          = useState(null);
+  const [error,         setError]         = useState(null);
+  const [libQ,          setLibQ]          = useState('');
+  const [reviewStars,   setReviewStars]   = useState(0);
+  const [reviewBody,    setReviewBody]    = useState('');
+  const [reviewPosting, setReviewPosting] = useState(false);
+  const [reviewDone,    setReviewDone]    = useState(false);
 
   useEffect(() => {
     cafesApi.get(id).then(setCafe).catch(e => setError(e.message));
   }, [id]);
 
   if (error) return <div className="section"><p className="muted">{error}</p></div>;
-  if (!cafe) return <div className="section"><div className="spinner"><i /><span>Loading…</span></div></div>;
+  if (!cafe)  return <div className="section"><div className="spinner"><i /><span>Loading…</span></div></div>;
 
-  const grad = cafeGrad(cafe.name);
+  const grad    = cafeGrad(cafe.name);
   const initial = (cafe.name || '?').trim()[0].toUpperCase();
-  const avg = cafe.rating ?? (cafe.reviews?.length
+  const avg     = cafe.rating ?? (cafe.reviews?.length
     ? (cafe.reviews.reduce((s, r) => s + r.stars, 0) / cafe.reviews.length).toFixed(1)
     : '—');
 
   const filteredGames = libQ
     ? cafe.games.filter(g => g.title?.toLowerCase().includes(libQ.toLowerCase()))
     : cafe.games;
+
+  const avatarColor = user?.avatarColor ?? AV[(user?.name?.charCodeAt(0) ?? 0) % AV.length];
+  const avatarLabel = user?.avatarIcon  || (user?.name?.trim()[0]?.toUpperCase() ?? '?');
+
+  async function postReview() {
+    if (!reviewStars) return;
+    setReviewPosting(true);
+    try {
+      await reviewsApi.post({ cafeId: cafe.id, stars: reviewStars, body: reviewBody.trim() || null });
+      setReviewDone(true);
+      // Reload to get updated reviews
+      cafesApi.get(id).then(setCafe).catch(() => {});
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setReviewPosting(false);
+    }
+  }
 
   return (
     <div className="fade-in">
@@ -88,16 +113,16 @@ export default function CafeLibrary() {
                 {t('map')}
               </a>
             )}
-            {cafe.fanPageUrl && (
-              <a href={cafe.fanPageUrl} target="_blank" rel="noreferrer">
+            {cafe.fanpage && (
+              <a href={cafe.fanpage} target="_blank" rel="noreferrer">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
                 Fanpage
               </a>
             )}
-            {cafe.phone && (
-              <a href={`tel:${cafe.phone}`}>
+            {cafe.contact && (
+              <a href={`tel:${cafe.contact}`}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.4 2.1L8.1 9.9a16 16 0 0 0 6 6l1.5-1.2a2 2 0 0 1 2.1-.4c.8.3 1.7.5 2.6.6a2 2 0 0 1 1.7 2Z"/></svg>
-                {cafe.phone}
+                {cafe.contact}
               </a>
             )}
           </div>
@@ -108,11 +133,18 @@ export default function CafeLibrary() {
       {cafe.menu?.length > 0 && (
         <div className="section">
           <h2>{t('cafeMenu')}</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
             {cafe.menu.map(m => (
-              <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: '11px 14px', boxShadow: 'var(--shadow)' }}>
+              <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 14px', boxShadow: 'var(--shadow)' }}>
+                {m.imageUrl && (
+                  <img
+                    src={m.imageUrl} alt={m.name}
+                    style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
+                    loading="lazy"
+                  />
+                )}
                 <span style={{ flex: 1, fontWeight: 600 }}>{m.name}</span>
-                <span style={{ color: 'var(--accent-ink)', fontWeight: 700 }}>{m.price}</span>
+                {m.price && <span style={{ color: 'var(--accent-ink)', fontWeight: 700 }}>{m.price}</span>}
               </div>
             ))}
           </div>
@@ -149,10 +181,60 @@ export default function CafeLibrary() {
           <h2>{t('reviews')}</h2>
           <span className="count">{cafe.reviews?.length ?? 0}</span>
         </div>
-        <div className="login-prompt">
-          <p>Log in to leave a review.</p>
-          <Link to="/login"><button className="btn">{t('loginCommentBtn')}</button></Link>
-        </div>
+
+        {/* Review composer — auth-aware */}
+        {isAuthenticated ? (
+          reviewDone ? (
+            <div className="login-prompt" style={{ background: 'var(--chip)' }}>
+              <p>✅ Review posted! Thank you.</p>
+            </div>
+          ) : (
+            <div className="composer">
+              <div className="top">
+                <div className="me" style={{ background: avatarColor }}>{avatarLabel}</div>
+                <div style={{ flex: 1 }}>
+                  {/* Star picker */}
+                  <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+                    {[1,2,3,4,5].map(n => (
+                      <button
+                        key={n}
+                        onClick={() => setReviewStars(n)}
+                        style={{
+                          fontSize: 22, lineHeight: 1, border: 'none', background: 'none',
+                          cursor: 'pointer', color: reviewStars >= n ? '#e6a817' : 'var(--line)',
+                          padding: '0 2px',
+                        }}
+                      >★</button>
+                    ))}
+                    {reviewStars > 0 && (
+                      <span style={{ fontSize: 13, color: 'var(--muted)', alignSelf: 'center', marginLeft: 4 }}>
+                        {reviewStars}/5
+                      </span>
+                    )}
+                  </div>
+                  <textarea
+                    placeholder="Share your experience…"
+                    value={reviewBody}
+                    onChange={e => setReviewBody(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+              </div>
+              <div className="row">
+                <button className="btn" onClick={postReview} disabled={reviewPosting || !reviewStars}>
+                  {reviewPosting ? '…' : 'Post Review'}
+                </button>
+              </div>
+            </div>
+          )
+        ) : (
+          <div className="login-prompt">
+            <p>Log in to leave a review.</p>
+            <Link to="/login"><button className="btn">{t('loginCommentBtn')}</button></Link>
+          </div>
+        )}
+
+        {/* Review list */}
         {cafe.reviews?.length === 0
           ? <p className="empty">{t('noReviews')}</p>
           : <div className="feedgrid">
@@ -168,7 +250,7 @@ export default function CafeLibrary() {
                       <div className="tm">{new Date(r.createdAt).toLocaleDateString()}</div>
                     </div>
                   </div>
-                  <div className="rt">{r.body}</div>
+                  {r.body && <div className="rt">{r.body}</div>}
                 </div>
               ))}
             </div>}

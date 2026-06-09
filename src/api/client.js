@@ -51,6 +51,7 @@ export const auth = {
 export const cafes = {
   list: (q) => api.get(`/api/cafes${q ? `?q=${encodeURIComponent(q)}` : ''}`, { auth: false }),
   get: (id) => api.get(`/api/cafes/${id}`, { auth: false }),
+  my: () => api.get('/api/cafes/my'),
 };
 
 export const games = {
@@ -61,4 +62,25 @@ export const games = {
   get: (id) => api.get(`/api/games/${id}`, { auth: false }),
   bggSearch: (q) => api.get(`/api/bgg/search?q=${encodeURIComponent(q)}`),
   import: (bggId) => api.post('/api/games/import', { bggId }),
+};
+
+export const wishlist = {
+  list: () => api.get('/api/wishlist'),
+  add: (gameId) => api.post(`/api/wishlist/${gameId}`, undefined),
+  remove: (gameId) => api.del(`/api/wishlist/${gameId}`),
+};
+
+export const comments = {
+  list: (target, id) => api.get(`/api/comments?target=${target}&id=${id}`, { auth: false }),
+  post: (data) => api.post('/api/comments', data),
+};
+
+export const reviews = {
+  post: (data) => api.post('/api/reviews', data),
+};
+
+export const cafeGames = {
+  add: (data) => api.post('/api/cafe-games', data),
+  update: (id, data) => api.patch(`/api/cafe-games/${id}`, data),
+  remove: (id) => api.del(`/api/cafe-games/${id}`),
 };
