@@ -24,6 +24,7 @@ export default function GameDetail() {
 
   const [game,          setGame]          = useState(null);
   const [error,         setError]         = useState(null);
+  const [bggImageUrl,   setBggImageUrl]   = useState(null);  // browser-fetched BGG image
   const [wishlisted,    setWishlisted]    = useState(false);
   const [loadingWish,   setLoadingWish]   = useState(false);
   const [commentList,   setCommentList]   = useState([]);
@@ -34,6 +35,25 @@ export default function GameDetail() {
   useEffect(() => {
     gamesApi.get(id).then(setGame).catch(e => setError(e.message));
   }, [id]);
+
+  // When imageUrl is missing from the API, fetch it directly from BGG in the browser.
+  // This bypasses any server-side network restrictions — BGG allows browser CORS.
+  useEffect(() => {
+    if (!game?.bggId || game.imageUrl) return;
+    let cancelled = false;
+    fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${game.bggId}`)
+      .then(r => r.text())
+      .then(xml => {
+        if (cancelled) return;
+        const doc    = new DOMParser().parseFromString(xml, 'text/xml');
+        const imgEl  = doc.querySelector('image');
+        const thumbEl = doc.querySelector('thumbnail');
+        const src    = imgEl?.textContent?.trim() || thumbEl?.textContent?.trim();
+        if (src) setBggImageUrl(src.startsWith('//') ? 'https:' + src : src);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [game?.bggId, game?.imageUrl]);
 
   // Load comments (anonymous can read)
   const loadComments = useCallback(() => {
@@ -79,6 +99,7 @@ export default function GameDetail() {
   if (error) return <div className="section"><p className="muted">{error}</p></div>;
   if (!game)  return <div className="section"><div className="spinner"><i /><span>Loading…</span></div></div>;
 
+  const artUrl  = game.imageUrl || bggImageUrl;   // prefer DB-cached, fall back to browser-fetched
   const grad    = gameGrad(game.bggId);
   const emoji   = gameEmoji(game.bggId);
   const players = game.minPlayers && game.maxPlayers
@@ -97,9 +118,9 @@ export default function GameDetail() {
 
       {/* ── Hero ── */}
       <div className="ghero">
-        <div className="art" style={{ background: game.imageUrl ? undefined : grad }}>
-          {game.imageUrl
-            ? <img src={game.imageUrl} alt={game.title} />
+        <div className="art" style={{ background: artUrl ? undefined : grad }}>
+          {artUrl
+            ? <img src={artUrl} alt={game.title} />
             : <span className="emoji">{emoji}</span>}
           {game.bggRank && (
             <span className="rank">BGG Rank <b>#{game.bggRank}</b></span>
