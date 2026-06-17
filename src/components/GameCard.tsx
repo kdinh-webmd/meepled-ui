@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { bgg as bggApi } from '../api/client';
+import { useStartNav } from '../context/SpinnerContext';
 import type { GameCardData } from '../types';
 
 const GR = [
@@ -25,9 +26,8 @@ export function gameEmoji(bggId: number): string {
   return EMOJI[bggId] || '🎲';
 }
 
-// 7-day localStorage cache for BGG thumbnails. Falls back gracefully if storage is unavailable.
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
-const inFlight: Record<number, boolean> = {}; // session-level dedup so sibling cards don't double-fetch
+const inFlight: Record<number, boolean> = {};
 
 function getCachedThumb(bggId: number): string | null | undefined {
   try {
@@ -35,30 +35,35 @@ function getCachedThumb(bggId: number): string | null | undefined {
     if (!raw) return undefined;
     const { url, expires } = JSON.parse(raw);
     if (Date.now() > expires) { localStorage.removeItem(`bgg_img_${bggId}`); return undefined; }
-    return url; // may be null (known 404 — still cached to avoid retry)
+    return url;
   } catch { return undefined; }
 }
 
 function setCachedThumb(bggId: number, url: string | null): void {
   try {
     localStorage.setItem(`bgg_img_${bggId}`, JSON.stringify({ url, expires: Date.now() + CACHE_TTL }));
-  } catch {} // quota exceeded — ignore
+  } catch {}
 }
 
-interface GameCardProps { g: GameCardData; featured?: boolean; }
+interface GameCardProps {
+  g: GameCardData;
+  featured?: boolean;
+  to?: string;
+}
 
-export default function GameCard({ g, featured = false }: GameCardProps) {
-  const id    = g.gameId ?? g.id;
+export default function GameCard({ g, featured = false, to }: GameCardProps) {
+  const startNav = useStartNav();
+  const href  = to ?? `/games/${g.gameId ?? g.id}`;
   const grad  = gameGrad(g.bggId);
   const emoji = gameEmoji(g.bggId);
 
   const [thumbUrl, setThumbUrl] = useState<string | null>(() => {
     const cached = getCachedThumb(g.bggId);
-    return (cached !== undefined ? cached : null);
+    return cached !== undefined ? cached : null;
   });
 
   useEffect(() => {
-    if (g.imageUrl || thumbUrl || !g.bggId) return;
+    if (g.thumbnailUrl || g.imageUrl || thumbUrl || !g.bggId) return;
     const cached = getCachedThumb(g.bggId);
     if (cached !== undefined) { if (cached) setThumbUrl(cached); return; }
     if (inFlight[g.bggId]) return;
@@ -75,7 +80,7 @@ export default function GameCard({ g, featured = false }: GameCardProps) {
       .catch(() => { delete inFlight[g.bggId]; });
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [g.bggId, g.imageUrl]);
+  }, [g.bggId, g.thumbnailUrl, g.imageUrl]);
 
   const artUrl  = g.thumbnailUrl || g.imageUrl || thumbUrl;
   const players = g.minPlayers && g.maxPlayers ? `${g.minPlayers}–${g.maxPlayers}` : g.minPlayers ?? '?';
@@ -83,7 +88,7 @@ export default function GameCard({ g, featured = false }: GameCardProps) {
   const weight  = typeof g.weight === 'number' ? g.weight : null;
 
   return (
-    <Link to={`/games/${id}`} className="gcard">
+    <Link to={href} className="gcard" onClick={startNav}>
       <div className="box" style={{ background: artUrl ? undefined : grad }}>
         {artUrl
           ? <img src={artUrl} alt={g.title} />

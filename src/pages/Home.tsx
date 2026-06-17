@@ -2,13 +2,12 @@ import { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { cafes as cafesApi, games as gamesApi } from '../api/client';
-import GameCard, { gameGrad, gameEmoji } from '../components/GameCard';
+import GameCard from '../components/GameCard';
+import { useStartNav } from '../context/SpinnerContext';
 import type { CafeCard, GameCardData, HotGame } from '../types';
 
-const AV_COLORS = ['#c0623a','#6b7d5a','#917256','#a8502c','#7a4a3a','#996b3d'];
 const CATS = ['Family','Party','Strategy','Cooperative','Abstract','Card Game'];
 
-// Deterministic initial from café name
 function cafeInitial(name: string): string { return (name || '?').trim()[0].toUpperCase(); }
 function cafeGrad(idx: number): string {
   const GR = ['linear-gradient(135deg,#8a5a3c,#c0623a)','linear-gradient(135deg,#6b7d5a,#9aa873)',
@@ -17,19 +16,22 @@ function cafeGrad(idx: number): string {
   return GR[idx % GR.length];
 }
 
+function hotToCard(h: HotGame): GameCardData {
+  return { id: String(h.bggId), title: h.name, bggId: h.bggId, thumbnailUrl: h.thumbnailUrl };
+}
+
 export default function Home() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [cafes, setCafes] = useState<CafeCard[]>([]);
-  const [games, setGames] = useState<GameCardData[]>([]);
+  const startNav = useStartNav();
+  const [cafes, setCafes]     = useState<CafeCard[]>([]);
   const [hotGames, setHotGames] = useState<HotGame[]>([]);
-  const [q, setQ] = useState('');
-  const [cat, setCat] = useState('All');
-  const cityRef = useRef<HTMLInputElement>(null);
+  const [q, setQ]             = useState('');
+  const [cat, setCat]         = useState('All');
+  const cityRef               = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     cafesApi.list().then(setCafes).catch(() => {});
-    gamesApi.list().then(setGames).catch(() => {});
     gamesApi.hot().then(setHotGames).catch(() => {});
   }, []);
 
@@ -43,7 +45,7 @@ export default function Home() {
       {/* ── Hero ── */}
       <section className="hero">
         <span className="eyebrow">
-          {cafes.length || '—'} {t('cafesWord')} · {games.length || '—'} {t('games').toLowerCase()}
+          {cafes.length || '—'} {t('cafesWord')} · {hotGames.length || '—'} {t('games').toLowerCase()}
         </span>
         <h1 className="big" dangerouslySetInnerHTML={{ __html: t('heroTitle') }} />
         <p className="hero-sub">{t('heroSub')}</p>
@@ -81,7 +83,7 @@ export default function Home() {
         </div>
         <div className="cgrid">
           {cafes.map((c, i) => (
-            <Link key={c.id} to={`/cafes/${c.id}`} className="ccard">
+            <Link key={c.id} to={`/cafes/${c.id}`} className="ccard" onClick={startNav}>
               <div className="photo" style={{ background: cafeGrad(i) }}>
                 {c.coverUrl
                   ? <img src={c.coverUrl} alt={c.name} />
@@ -104,42 +106,20 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Trending games (strip) ── */}
-      <section className="sec">
-        <div className="sec-head">
-          <h2>{t('secTrending')}</h2>
-          <Link to="/search">{t('lnkAll')}</Link>
-        </div>
-        <div className="strip">
-          {hotGames.slice(0, 10).map(g => {
-            const href = g.localId ? `/games/${g.localId}` : `https://boardgamegeek.com/boardgame/${g.bggId}`;
-            const isExternal = !g.localId;
-            return (
-              <a key={g.bggId} href={href}
-                 target={isExternal ? '_blank' : undefined}
-                 rel={isExternal ? 'noreferrer' : undefined}
-                 className="gtile" style={{ textDecoration: 'none' }}>
-                <div className="gimg" style={{ background: g.thumbnailUrl ? undefined : gameGrad(g.bggId) }}>
-                  {g.thumbnailUrl
-                    ? <img src={g.thumbnailUrl} alt={g.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} />
-                    : gameEmoji(g.bggId)}
-                </div>
-                <p>{g.name}</p>
-                <span>#{g.rank}</span>
-              </a>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ── Games grid ── */}
+      {/* ── Trending games from BGG ── */}
       <section className="sec" style={{ paddingBottom: 60 }}>
         <div className="sec-head">
-          <h2>Browse games</h2>
+          <h2>🔥 {t('secTrending')}</h2>
           <Link to="/search">{t('lnkAll')}</Link>
         </div>
         <div className="ggrid">
-          {games.slice(0, 8).map(g => <GameCard key={g.id} g={g} />)}
+          {hotGames.slice(0, 12).map(g => (
+            <GameCard
+              key={g.bggId}
+              g={hotToCard(g)}
+              to={`/games/bgg/${g.bggId}`}
+            />
+          ))}
         </div>
       </section>
     </div>

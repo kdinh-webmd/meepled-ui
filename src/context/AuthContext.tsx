@@ -13,6 +13,10 @@ interface AuthContextValue {
   register: (name: string, email: string, password: string) => Promise<User>;
   logout: () => void;
   updateUser: (data: UpdateUserRequest) => Promise<User>;
+  loginModalOpen: boolean;
+  loginReturnTo: string | null;
+  openLoginModal: (returnTo?: string) => void;
+  closeLoginModal: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -22,6 +26,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const raw = localStorage.getItem(USER_KEY);
     return raw ? JSON.parse(raw) : null;
   });
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [loginReturnTo, setLoginReturnTo] = useState<string | null>(null);
+
+  function openLoginModal(returnTo?: string) {
+    setLoginReturnTo(returnTo ?? null);
+    setLoginModalOpen(true);
+  }
+  function closeLoginModal() {
+    setLoginModalOpen(false);
+    setLoginReturnTo(null);
+  }
 
   useEffect(() => {
     if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
@@ -65,8 +80,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       register,
       logout,
       updateUser,
+      loginModalOpen,
+      loginReturnTo,
+      openLoginModal,
+      closeLoginModal,
     }),
-    [user],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [user, loginModalOpen, loginReturnTo],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

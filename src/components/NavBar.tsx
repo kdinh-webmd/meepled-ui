@@ -2,12 +2,13 @@ import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
+import LoginModal from './LoginModal';
 
 const AV = ['#c0623a','#6b7d5a','#917256','#a8502c','#7a4a3a','#996b3d'];
 
 export default function NavBar() {
   const { t, i18n } = useTranslation();
-  const { isAuthenticated, isOwner, logout, user } = useAuth();
+  const { isAuthenticated, isOwner, logout, user, openLoginModal } = useAuth();
   const navigate = useNavigate();
   const [q, setQ] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -26,6 +27,7 @@ export default function NavBar() {
   const avatarLabel = user?.avatarIcon || (user?.name?.trim()[0]?.toUpperCase() ?? '?');
 
   return (
+    <>
     <nav className="nav">
       <div className="nav-inner">
         {/* Logo */}
@@ -73,12 +75,12 @@ export default function NavBar() {
               </button>
             </>
           ) : (
-            <Link to="/login">
-              <button className="btn ghost sm">{t('login')}</button>
-            </Link>
+            <button className="btn ghost sm" onClick={() => openLoginModal()}>{t('login')}</button>
           )}
         </div>
       </div>
     </nav>
+    <LoginModal />
+    </>
   );
 }

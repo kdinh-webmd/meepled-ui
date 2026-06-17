@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { games as gamesApi, wishlist as wishlistApi, comments as commentsApi, bgg as bggApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useStartNav } from '../context/SpinnerContext';
 import { gameGrad, gameEmoji } from '../components/GameCard';
 import type { GameDetailData, Comment } from '../types';
 
@@ -19,27 +20,32 @@ function cafeGrad(name: string | undefined): string { return GR_CAFE[(name?.char
 function avColor(name: string | undefined): string { return AV[(name?.charCodeAt(0) ?? 0) % AV.length]; }
 
 export default function GameDetail() {
-  const { id } = useParams<{ id: string }>();
+  const { id, bggId } = useParams<{ id?: string; bggId?: string }>();
   const { t } = useTranslation();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, openLoginModal } = useAuth();
+  const startNav = useStartNav();
 
-  const [game,          setGame]          = useState<GameDetailData | null>(null);
-  const [error,         setError]         = useState<string | null>(null);
-  const [bggImageUrl,   setBggImageUrl]   = useState<string | null>(null);  // browser-fetched BGG image
-  const [wishlisted,    setWishlisted]    = useState(false);
-  const [loadingWish,   setLoadingWish]   = useState(false);
-  const [commentList,   setCommentList]   = useState<Comment[]>([]);
-  const [commentText,   setCommentText]   = useState('');
-  const [posting,       setPosting]       = useState(false);
+  const [game,        setGame]        = useState<GameDetailData | null>(null);
+  const [error,       setError]       = useState<string | null>(null);
+  const [bggImageUrl, setBggImageUrl] = useState<string | null>(null);
+  const [wishlisted,  setWishlisted]  = useState(false);
+  const [loadingWish, setLoadingWish] = useState(false);
+  const [commentList, setCommentList] = useState<Comment[]>([]);
+  const [commentText, setCommentText] = useState('');
+  const [posting,     setPosting]     = useState(false);
 
-  // Load game data
   useEffect(() => {
-    gamesApi.get(id!).then(setGame).catch(e => setError((e as Error).message));
-  }, [id]);
+    setGame(null);
+    setError(null);
+    setBggImageUrl(null);
+    if (bggId) {
+      gamesApi.getByBggId(Number(bggId)).then(setGame).catch(e => setError((e as Error).message));
+    } else {
+      gamesApi.get(id!).then(setGame).catch(e => setError((e as Error).message));
+    }
+  }, [id, bggId]);
 
-  // When imageUrl is missing from the API, fetch it via our backend proxy.
-  // Our server calls BGG with a browser-like User-Agent; the browser calls us
-  // (CORS is configured), so neither BGG's CORS block nor IP-level 401 applies.
+  // Fetch image via proxy when missing from API response
   useEffect(() => {
     if (!game?.bggId || game.imageUrl) return;
     let cancelled = false;
@@ -49,13 +55,13 @@ export default function GameDetail() {
     return () => { cancelled = true; };
   }, [game?.bggId, game?.imageUrl]);
 
-  // Load comments (anonymous can read)
   const loadComments = useCallback(() => {
-    commentsApi.list('game', id!).then(setCommentList).catch(() => {});
-  }, [id]);
+    const targetId = game?.id;
+    if (!targetId) return;
+    commentsApi.list('game', targetId).then(setCommentList).catch(() => {});
+  }, [game?.id]);
   useEffect(() => { loadComments(); }, [loadComments]);
 
-  // Check wishlist status after game loads
   useEffect(() => {
     if (!isAuthenticated || !game?.id) return;
     wishlistApi.list()
@@ -64,6 +70,7 @@ export default function GameDetail() {
   }, [isAuthenticated, game?.id]);
 
   async function toggleWish() {
+    if (!isAuthenticated) { openLoginModal(); return; }
     if (!game) return;
     setLoadingWish(true);
     try {
@@ -93,7 +100,7 @@ export default function GameDetail() {
   if (error) return <div className="section"><p className="muted">{error}</p></div>;
   if (!game)  return <div className="section"><div className="spinner"><i /><span>Loading…</span></div></div>;
 
-  const artUrl  = game.imageUrl || bggImageUrl;   // prefer DB-cached, fall back to browser-fetched
+  const artUrl  = game.imageUrl || bggImageUrl;
   const grad    = gameGrad(game.bggId);
   const emoji   = gameEmoji(game.bggId);
   const players = game.minPlayers && game.maxPlayers
@@ -135,20 +142,13 @@ export default function GameDetail() {
                 {Number(game.bggRating).toFixed(1)}<span> / 10 · BGG</span>
               </div>
             )}
-            {/* Wishlist toggle */}
-            {isAuthenticated ? (
-              <button
-                className={`btn${wishlisted ? '' : ' ghost'} sm`}
-                onClick={toggleWish}
-                disabled={loadingWish}
-              >
-                {loadingWish ? '…' : wishlisted ? '♥ ' + t('inWish') : '♡ ' + t('addWish')}
-              </button>
-            ) : (
-              <Link to="/login">
-                <button className="btn ghost sm">♡ {t('addWish')}</button>
-              </Link>
-            )}
+            <button
+              className={`btn${wishlisted ? '' : ' ghost'} sm`}
+              onClick={toggleWish}
+              disabled={loadingWish}
+            >
+              {loadingWish ? '…' : wishlisted ? '♥ ' + t('inWish') : '♡ ' + t('addWish')}
+            </button>
           </div>
 
           <div className="quickstats">
@@ -173,7 +173,7 @@ export default function GameDetail() {
       </div>
 
       {/* ── About ── */}
-      {(game.description || game.categories?.length > 0) && (
+      {(game.description || (game.categories?.length ?? 0) > 0) && (
         <div className="section">
           <h2>{t('aboutGame')}</h2>
           {game.description && (
@@ -182,7 +182,7 @@ export default function GameDetail() {
               {game.description.length > 600 ? '…' : ''}
             </p>
           )}
-          {game.categories?.length > 0 && (
+          {(game.categories?.length ?? 0) > 0 && (
             <div className="tags-row">
               {game.categories.map(c => <span key={c} className="tag">{c}</span>)}
             </div>
@@ -191,12 +191,12 @@ export default function GameDetail() {
       )}
 
       {/* ── Where to play ── */}
-      {game.cafes?.length > 0 && (
+      {(game.cafes?.length ?? 0) > 0 && (
         <div className="section" id="wtp">
           <h2>{t('whereToPlay')}</h2>
           <div className="cafe-rows">
             {game.cafes.map((c, i) => (
-              <Link key={c.cafeId ?? i} to={`/cafes/${c.cafeId}`} className="crow">
+              <Link key={c.cafeId ?? i} to={`/cafes/${c.cafeId}`} className="crow" onClick={startNav}>
                 <div className="av" style={{ background: cafeGrad(c.cafeName) }}>
                   {(c.cafeName || '?').trim()[0].toUpperCase()}
                 </div>
@@ -218,7 +218,6 @@ export default function GameDetail() {
           <span className="count">{commentList.length}</span>
         </div>
 
-        {/* Composer — only when logged in */}
         {isAuthenticated ? (
           <div className="composer">
             <div className="top">
@@ -239,11 +238,10 @@ export default function GameDetail() {
         ) : (
           <div className="login-prompt">
             <p>{t('loginComment')}</p>
-            <Link to="/login"><button className="btn">{t('loginCommentBtn')}</button></Link>
+            <button className="btn" onClick={() => openLoginModal()}>{t('loginCommentBtn')}</button>
           </div>
         )}
 
-        {/* Comment list */}
         {commentList.length > 0 && (
           <div style={{ marginTop: 4 }}>
             {commentList.map(c => (

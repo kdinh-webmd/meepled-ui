@@ -73,6 +73,7 @@ export const games = {
     return api.get<GameCardData[]>(`/api/games${qs ? `?${qs}` : ''}`, { auth: false });
   },
   get: (id: string) => api.get<GameDetailData>(`/api/games/${id}`, { auth: false }),
+  getByBggId: (bggId: number) => api.get<GameDetailData>(`/api/games/bgg/${bggId}`, { auth: false }),
   hot: () => api.get<HotGame[]>('/api/games/hot', { auth: false }),
   bggSearch: (q: string) =>
     api.get<BggSearchResult[]>(`/api/bgg/search?q=${encodeURIComponent(q)}`),
