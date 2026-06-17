@@ -34,8 +34,10 @@ export default function Home() {
   const cityRef       = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    cafesApi.list().then(setCafes).catch(() => {}).finally(() => setCafesLoading(false));
-    gamesApi.hot().then(setHotGames).catch(() => {}).finally(() => setGamesLoading(false));
+    const cafesMin = new Promise<void>(r => setTimeout(r, 600));
+    const gamesMin = new Promise<void>(r => setTimeout(r, 600));
+    cafesApi.list().then(d => setCafes(d)).catch(() => {}).then(() => cafesMin).then(() => setCafesLoading(false));
+    gamesApi.hot().then(d => setHotGames(d)).catch(() => {}).then(() => gamesMin).then(() => setGamesLoading(false));
   }, []);
 
   function doSearch() {

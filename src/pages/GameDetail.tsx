@@ -39,7 +39,10 @@ export default function GameDetail() {
     setGame(null);
     setError(null);
     setBggImageUrl(null);
-    gamesApi.getByBggId(Number(bggId)).then(setGame).catch(e => setError((e as Error).message));
+    const minDelay = new Promise<void>(r => setTimeout(r, 600));
+    gamesApi.getByBggId(Number(bggId))
+      .then(async data => { await minDelay; setGame(data); })
+      .catch(e => setError((e as Error).message));
   }, [bggId]);
 
   // Fetch image via proxy when missing from API response

@@ -63,7 +63,10 @@ export default function CafeLibrary() {
   const [reviewDone,    setReviewDone]    = useState(false);
 
   useEffect(() => {
-    cafesApi.get(id!).then(setCafe).catch(e => setError((e as Error).message));
+    const minDelay = new Promise<void>(r => setTimeout(r, 600));
+    cafesApi.get(id!)
+      .then(async data => { await minDelay; setCafe(data); })
+      .catch(e => setError((e as Error).message));
   }, [id]);
 
   if (error) return <div className="section"><p className="muted">{error}</p></div>;
