@@ -43,8 +43,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/cafes/:id" element={<CafeLibrary />} />
-          <Route path="/games/bgg/:bggId" element={<GameDetail />} />
-          <Route path="/games/:id" element={<GameDetail />} />
+          <Route path="/games/:bggId" element={<GameDetail />} />
           <Route path="/search" element={<Search />} />
           <Route path="/map" element={<MapView />} />
           <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />

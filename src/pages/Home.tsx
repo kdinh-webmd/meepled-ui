@@ -117,7 +117,7 @@ export default function Home() {
             <GameCard
               key={g.bggId}
               g={hotToCard(g)}
-              to={`/games/bgg/${g.bggId}`}
+              to={`/games/${g.bggId}`}
             />
           ))}
         </div>

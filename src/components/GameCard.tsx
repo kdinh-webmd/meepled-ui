@@ -53,7 +53,7 @@ interface GameCardProps {
 
 export default function GameCard({ g, featured = false, to }: GameCardProps) {
   const startNav = useStartNav();
-  const href  = to ?? `/games/${g.gameId ?? g.id}`;
+  const href  = to ?? `/games/${g.bggId}`;
   const grad  = gameGrad(g.bggId);
   const emoji = gameEmoji(g.bggId);
 

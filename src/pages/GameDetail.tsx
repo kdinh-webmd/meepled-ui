@@ -20,7 +20,7 @@ function cafeGrad(name: string | undefined): string { return GR_CAFE[(name?.char
 function avColor(name: string | undefined): string { return AV[(name?.charCodeAt(0) ?? 0) % AV.length]; }
 
 export default function GameDetail() {
-  const { id, bggId } = useParams<{ id?: string; bggId?: string }>();
+  const { bggId } = useParams<{ bggId: string }>();
   const { t } = useTranslation();
   const { isAuthenticated, user, openLoginModal } = useAuth();
   const startNav = useStartNav();
@@ -38,12 +38,8 @@ export default function GameDetail() {
     setGame(null);
     setError(null);
     setBggImageUrl(null);
-    if (bggId) {
-      gamesApi.getByBggId(Number(bggId)).then(setGame).catch(e => setError((e as Error).message));
-    } else {
-      gamesApi.get(id!).then(setGame).catch(e => setError((e as Error).message));
-    }
-  }, [id, bggId]);
+    gamesApi.getByBggId(Number(bggId)).then(setGame).catch(e => setError((e as Error).message));
+  }, [bggId]);
 
   // Fetch image via proxy when missing from API response
   useEffect(() => {
