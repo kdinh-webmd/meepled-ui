@@ -5,6 +5,7 @@ import { games as gamesApi, wishlist as wishlistApi, comments as commentsApi, bg
 import { useAuth } from '../context/AuthContext';
 import { useStartNav } from '../context/SpinnerContext';
 import { gameGrad, gameEmoji } from '../components/GameCard';
+import { GameDetailSkeleton } from '../components/Skeletons';
 import type { GameDetailData, Comment } from '../types';
 
 const GR_CAFE = [
@@ -94,7 +95,7 @@ export default function GameDetail() {
   }
 
   if (error) return <div className="section"><p className="muted">{error}</p></div>;
-  if (!game)  return <div className="section"><div className="spinner"><i /><span>Loading…</span></div></div>;
+  if (!game)  return <div className="wrap"><GameDetailSkeleton /></div>;
 
   const artUrl  = game.imageUrl || bggImageUrl;
   const grad    = gameGrad(game.bggId);

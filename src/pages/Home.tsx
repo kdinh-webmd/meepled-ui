@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { cafes as cafesApi, games as gamesApi } from '../api/client';
 import GameCard from '../components/GameCard';
+import { CafeCardSkeleton, GameCardSkeleton } from '../components/Skeletons';
 import { useStartNav } from '../context/SpinnerContext';
 import type { CafeCard, GameCardData, HotGame } from '../types';
 
@@ -24,15 +25,17 @@ export default function Home() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const startNav = useStartNav();
-  const [cafes, setCafes]     = useState<CafeCard[]>([]);
-  const [hotGames, setHotGames] = useState<HotGame[]>([]);
-  const [q, setQ]             = useState('');
-  const [cat, setCat]         = useState('All');
-  const cityRef               = useRef<HTMLInputElement>(null);
+  const [cafes,        setCafes]        = useState<CafeCard[]>([]);
+  const [cafesLoading, setCafesLoading] = useState(true);
+  const [hotGames,     setHotGames]     = useState<HotGame[]>([]);
+  const [gamesLoading, setGamesLoading] = useState(true);
+  const [q, setQ]     = useState('');
+  const [cat, setCat] = useState('All');
+  const cityRef       = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    cafesApi.list().then(setCafes).catch(() => {});
-    gamesApi.hot().then(setHotGames).catch(() => {});
+    cafesApi.list().then(setCafes).catch(() => {}).finally(() => setCafesLoading(false));
+    gamesApi.hot().then(setHotGames).catch(() => {}).finally(() => setGamesLoading(false));
   }, []);
 
   function doSearch() {
@@ -82,7 +85,9 @@ export default function Home() {
           <Link to="/map">{t('lnkMap')}</Link>
         </div>
         <div className="cgrid">
-          {cafes.map((c, i) => (
+          {cafesLoading
+            ? Array(4).fill(0).map((_, i) => <CafeCardSkeleton key={i} />)
+            : cafes.map((c, i) => (
             <Link key={c.id} to={`/cafes/${c.id}`} className="ccard" onClick={startNav}>
               <div className="photo" style={{ background: cafeGrad(i) }}>
                 {c.coverUrl
@@ -113,13 +118,15 @@ export default function Home() {
           <Link to="/search">{t('lnkAll')}</Link>
         </div>
         <div className="ggrid">
-          {hotGames.slice(0, 12).map(g => (
-            <GameCard
-              key={g.bggId}
-              g={hotToCard(g)}
-              to={`/games/${g.bggId}`}
-            />
-          ))}
+          {gamesLoading
+            ? Array(12).fill(0).map((_, i) => <GameCardSkeleton key={i} />)
+            : hotGames.slice(0, 12).map(g => (
+                <GameCard
+                  key={g.bggId}
+                  g={hotToCard(g)}
+                  to={`/games/${g.bggId}`}
+                />
+              ))}
         </div>
       </section>
     </div>

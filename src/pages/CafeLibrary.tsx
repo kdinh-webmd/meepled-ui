@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { cafes as cafesApi, reviews as reviewsApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import GameCard from '../components/GameCard';
+import { CafeDetailSkeleton } from '../components/Skeletons';
 import type { CafeDetail } from '../types';
 
 const GR = [
@@ -51,7 +52,7 @@ function computeOpenStatus(hours: string | null | undefined): boolean | null {
 export default function CafeLibrary() {
   const { id }  = useParams<{ id: string }>();
   const { t }   = useTranslation();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, openLoginModal } = useAuth();
 
   const [cafe,          setCafe]          = useState<CafeDetail | null>(null);
   const [error,         setError]         = useState<string | null>(null);
@@ -66,7 +67,7 @@ export default function CafeLibrary() {
   }, [id]);
 
   if (error) return <div className="section"><p className="muted">{error}</p></div>;
-  if (!cafe)  return <div className="section"><div className="spinner"><i /><span>Loading…</span></div></div>;
+  if (!cafe)  return <div className="wrap"><CafeDetailSkeleton /></div>;
 
   const grad    = cafeGrad(cafe.name);
   const initial = (cafe.name || '?').trim()[0].toUpperCase();
@@ -269,7 +270,7 @@ export default function CafeLibrary() {
         ) : (
           <div className="login-prompt">
             <p>Log in to leave a review.</p>
-            <Link to="/login"><button className="btn">{t('loginCommentBtn')}</button></Link>
+            <button className="btn" onClick={() => openLoginModal()}>{t('loginCommentBtn')}</button>
           </div>
         )}
 
