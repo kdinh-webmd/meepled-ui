@@ -12,7 +12,8 @@ function S({ w = '100%', h = 14, r = 8, mb = 0, style }: {
 export function CafeCardSkeleton() {
   return (
     <div className="ccard" style={{ pointerEvents: 'none' }}>
-      <div className="photo skel" style={{ background: 'none' }} />
+      {/* photo area — just let .skel own the background, no override */}
+      <div className="photo skel" />
       <div className="b" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <S h={22} w="68%" r={6} />
         <S h={13} w="50%" />
@@ -29,12 +30,14 @@ export function CafeCardSkeleton() {
 export function GameCardSkeleton() {
   return (
     <div className="gcard" style={{ pointerEvents: 'none' }}>
-      <div className="box skel" style={{ background: 'none' }} />
+      {/* box area — just let .skel own the background */}
+      <div className="box skel" />
       <div className="b" style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
         <S h={19} w="80%" r={6} />
         <S h={13} w="55%" />
-        <div className="wt">
-          <div className="bar skel" style={{ flex: 1 }} />
+        {/* weight bar — avoid .bar class whose specificity beats .skel */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 9 }}>
+          <S style={{ flex: 1, height: 6, borderRadius: 999 }} />
           <S h={11} w={22} />
         </div>
       </div>
@@ -51,7 +54,7 @@ export function CafeDetailSkeleton() {
 
       {/* Header: cover + info */}
       <div className="cafe-head">
-        <div className="cover-box skel" style={{ background: 'none', minHeight: 230 }} />
+        <div className="cover-box skel" style={{ minHeight: 230 }} />
         <div className="cafe-info" style={{ gap: 0 }}>
           <S h={42} w="75%" r={8} mb={12} />
           <S h={15} w="55%" mb={16} />
@@ -132,8 +135,8 @@ export function GameDetailSkeleton() {
 
       {/* Hero: art + info */}
       <div className="ghero">
-        {/* Art box */}
-        <div className="art skel" style={{ background: 'none', minHeight: 320 }} />
+        {/* Art box — no background override so .skel shimmer shows */}
+        <div className="art skel" style={{ minHeight: 320 }} />
 
         {/* Info */}
         <div className="ginfo" style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
