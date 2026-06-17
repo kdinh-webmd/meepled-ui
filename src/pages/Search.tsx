@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { games as gamesApi, cafes as cafesApi } from '../api/client';
 import GameCard from '../components/GameCard';
+import { GameCardSkeleton } from '../components/Skeletons';
 import type { CafeCard, GameCardData } from '../types';
 
 const CATS = ['All', 'Family', 'Party', 'Cooperative', 'Strategy', 'Engine Building', 'Abstract', 'Card Game'];
@@ -20,9 +21,11 @@ export default function Search() {
   const [params, setParams] = useSearchParams();
   const [q, setQ] = useState(params.get('q') ?? '');
   const [cat, setCat] = useState(params.get('cat') ?? 'All');
-  const [games, setGames] = useState<GameCardData[]>([]);
+  const [bggGames, setBggGames] = useState<GameCardData[]>([]);
+  const [localGames, setLocalGames] = useState<GameCardData[]>([]);
   const [cafes, setCafes] = useState<CafeCard[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [bggLoading, setBggLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     run();
@@ -30,18 +33,37 @@ export default function Search() {
   }, []);
 
   async function run(overrideQ?: string, overrideCat?: string) {
-    const query = overrideQ ?? q;
+    const query    = overrideQ    ?? q;
     const category = overrideCat ?? cat;
+    setBggGames([]);
+    setLocalGames([]);
+
+    // BGG search (when query present)
+    if (query) {
+      setBggLoading(true);
+      gamesApi.bggSearch(query)
+        .then(results =>
+          setBggGames(results.slice(0, 24).map(r => ({
+            id: String(r.bggId),
+            title: r.name,
+            bggId: r.bggId,
+          })))
+        )
+        .catch(() => {})
+        .finally(() => setBggLoading(false));
+    }
+
+    // Local DB + cafes search
     setLoading(true);
     const p: Record<string, string> = {};
     if (query) p.q = query;
     if (category && category !== 'All') p.category = category;
     try {
       const [gs, cs] = await Promise.all([
-        gamesApi.list(p),
+        query ? Promise.resolve([]) : gamesApi.list(p),
         cafesApi.list(query || undefined),
       ]);
-      setGames(gs);
+      setLocalGames(gs);
       setCafes(cs);
     } finally {
       setLoading(false);
@@ -57,6 +79,9 @@ export default function Search() {
     setParams({ q, cat: c });
     run(q, c);
   }
+
+  const showBgg   = q.length > 0;
+  const totalCount = (showBgg ? bggGames.length : localGames.length) + cafes.length;
 
   return (
     <div className="fade-in">
@@ -81,21 +106,43 @@ export default function Search() {
         ))}
       </div>
 
-      {loading && <div className="spinner" style={{ marginTop: 20 }}><i /><span>Searching…</span></div>}
-
-      {!loading && (
+      {!bggLoading && !loading && (
         <p className="muted" style={{ margin: '14px 0 4px' }}>
-          {games.length} {t('games').toLowerCase()} · {cafes.length} {t('cafesWord')}
+          {totalCount} result{totalCount !== 1 ? 's' : ''}
           {cat !== 'All' ? ` · ${cat}` : ''}
+          {showBgg ? ' · via BoardGameGeek' : ''}
         </p>
       )}
 
-      {/* Games */}
-      {games.length > 0 && (
+      {/* BGG results (when query present) */}
+      {showBgg && (
+        <section className="sec">
+          <div className="sec-head">
+            <h2>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ verticalAlign: 'middle', marginRight: 6 }}><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
+              BoardGameGeek Results
+            </h2>
+          </div>
+          {bggLoading ? (
+            <div className="resgrid">
+              {Array(8).fill(0).map((_, i) => <GameCardSkeleton key={i} />)}
+            </div>
+          ) : bggGames.length > 0 ? (
+            <div className="resgrid">
+              {bggGames.map(g => <GameCard key={g.bggId} g={g} />)}
+            </div>
+          ) : (
+            <p className="empty">No results on BoardGameGeek for "{q}".</p>
+          )}
+        </section>
+      )}
+
+      {/* Local games (when browsing by category, no query) */}
+      {!showBgg && localGames.length > 0 && (
         <section className="sec">
           <div className="sec-head"><h2>{t('games')}</h2></div>
           <div className="resgrid">
-            {games.map(g => <GameCard key={g.id} g={g} />)}
+            {localGames.map(g => <GameCard key={g.id} g={g} />)}
           </div>
         </section>
       )}
@@ -129,7 +176,7 @@ export default function Search() {
         </section>
       )}
 
-      {!loading && games.length === 0 && cafes.length === 0 && (
+      {!bggLoading && !loading && totalCount === 0 && (
         <p className="empty">No results — try a different search or category.</p>
       )}
     </div>

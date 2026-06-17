@@ -25,19 +25,23 @@ export default function Home() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const startNav = useStartNav();
-  const [cafes,        setCafes]        = useState<CafeCard[]>([]);
-  const [cafesLoading, setCafesLoading] = useState(true);
-  const [hotGames,     setHotGames]     = useState<HotGame[]>([]);
-  const [gamesLoading, setGamesLoading] = useState(true);
+  const [cafes,            setCafes]            = useState<CafeCard[]>([]);
+  const [cafesLoading,     setCafesLoading]     = useState(true);
+  const [hotGames,         setHotGames]         = useState<HotGame[]>([]);
+  const [gamesLoading,     setGamesLoading]     = useState(true);
+  const [topRanked,        setTopRanked]        = useState<HotGame[]>([]);
+  const [topRankedLoading, setTopRankedLoading] = useState(true);
   const [q, setQ]     = useState('');
   const [cat, setCat] = useState('All');
   const cityRef       = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const cafesMin = new Promise<void>(r => setTimeout(r, 600));
-    const gamesMin = new Promise<void>(r => setTimeout(r, 600));
+    const cafesMin   = new Promise<void>(r => setTimeout(r, 600));
+    const gamesMin   = new Promise<void>(r => setTimeout(r, 600));
+    const topMin     = new Promise<void>(r => setTimeout(r, 600));
     cafesApi.list().then(d => setCafes(d)).catch(() => {}).then(() => cafesMin).then(() => setCafesLoading(false));
     gamesApi.hot().then(d => setHotGames(d)).catch(() => {}).then(() => gamesMin).then(() => setGamesLoading(false));
+    gamesApi.topRanked().then(d => setTopRanked(d)).catch(() => {}).then(() => topMin).then(() => setTopRankedLoading(false));
   }, []);
 
   function doSearch() {
@@ -113,16 +117,35 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Trending games from BGG ── */}
-      <section className="sec" style={{ paddingBottom: 60 }}>
+      {/* ── Most Played Games (BGG hot) ── */}
+      <section className="sec">
         <div className="sec-head">
-          <h2>🔥 {t('secTrending')}</h2>
+          <h2>🎮 {t('secMostPlayed')}</h2>
           <Link to="/search">{t('lnkAll')}</Link>
         </div>
         <div className="ggrid">
           {gamesLoading
             ? Array(12).fill(0).map((_, i) => <GameCardSkeleton key={i} />)
             : hotGames.slice(0, 12).map(g => (
+                <GameCard
+                  key={g.bggId}
+                  g={hotToCard(g)}
+                  to={`/games/${g.bggId}`}
+                />
+              ))}
+        </div>
+      </section>
+
+      {/* ── Top Ranking Overall ── */}
+      <section className="sec" style={{ paddingBottom: 60 }}>
+        <div className="sec-head">
+          <h2>🏆 {t('secTopRanked')}</h2>
+          <Link to="/search">{t('lnkAll')}</Link>
+        </div>
+        <div className="ggrid">
+          {topRankedLoading
+            ? Array(10).fill(0).map((_, i) => <GameCardSkeleton key={i} />)
+            : topRanked.slice(0, 10).map(g => (
                 <GameCard
                   key={g.bggId}
                   g={hotToCard(g)}

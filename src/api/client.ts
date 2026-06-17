@@ -75,8 +75,9 @@ export const games = {
   get: (id: string) => api.get<GameDetailData>(`/api/games/${id}`, { auth: false }),
   getByBggId: (bggId: number) => api.get<GameDetailData>(`/api/games/bgg/${bggId}`, { auth: false }),
   hot: () => api.get<HotGame[]>('/api/games/hot', { auth: false }),
+  topRanked: () => api.get<HotGame[]>('/api/games/top-ranked', { auth: false }),
   bggSearch: (q: string) =>
-    api.get<BggSearchResult[]>(`/api/bgg/search?q=${encodeURIComponent(q)}`),
+    api.get<BggSearchResult[]>(`/api/bgg/search?q=${encodeURIComponent(q)}`, { auth: false }),
   import: (bggId: number) => api.post<GameCardData>('/api/games/import', { bggId }),
 };
 

@@ -83,7 +83,9 @@ export default function GameCard({ g, featured = false, to }: GameCardProps) {
   }, [g.bggId, g.thumbnailUrl, g.imageUrl]);
 
   const artUrl  = g.thumbnailUrl || g.imageUrl || thumbUrl;
-  const players = g.minPlayers && g.maxPlayers ? `${g.minPlayers}–${g.maxPlayers}` : g.minPlayers ?? '?';
+  const players = g.minPlayers
+    ? (g.maxPlayers && g.maxPlayers > g.minPlayers ? `${g.minPlayers}–${g.maxPlayers}` : `${g.minPlayers}`)
+    : null;
   const time    = g.maxTime ?? g.minTime;
   const weight  = typeof g.weight === 'number' ? g.weight : null;
 
@@ -102,14 +104,16 @@ export default function GameCard({ g, featured = false, to }: GameCardProps) {
           {featured && <span className="tag feat" style={{ marginRight: 6 }}>★ Featured</span>}
           {g.title}
         </h3>
-        <div className="specs">
-          <span>👥 {players}</span>
-          {time && <span>⏱ {time}m</span>}
-        </div>
+        {(players || time) && (
+          <div className="specs">
+            {players && <span>👥 {players}</span>}
+            {time && <span>⏱ {time}m</span>}
+          </div>
+        )}
         {weight != null && (
           <div className="wt">
             <div className="bar"><div className="fill" style={{ width: `${(weight / 5) * 100}%` }} /></div>
-            <span className="lbl">{weight.toFixed(1)}</span>
+            <span className="lbl">{weight.toFixed(2)}/5</span>
           </div>
         )}
       </div>

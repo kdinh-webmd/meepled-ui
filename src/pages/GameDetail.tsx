@@ -155,7 +155,7 @@ export default function GameDetail() {
             <div className="qs"><div className="l">👥 Players</div><div className="v">{players}</div></div>
             <div className="qs"><div className="l">⏱ Time</div>   <div className="v">{time}m</div></div>
             <div className="qs"><div className="l">🎂 Age</div>    <div className="v">{game.minAge ? `${game.minAge}+` : '—'}</div></div>
-            <div className="qs"><div className="l">⚖️ Weight</div> <div className="v">{weight != null ? `${weight.toFixed(1)}/5` : '—'}</div></div>
+            <div className="qs"><div className="l">⚖️ Weight</div> <div className="v">{weight != null ? `${weight.toFixed(2)}/5` : '—'}</div></div>
           </div>
 
           <div className="game-actions">
