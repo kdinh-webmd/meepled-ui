@@ -52,6 +52,11 @@ export const cafes = {
   list: (q) => api.get(`/api/cafes${q ? `?q=${encodeURIComponent(q)}` : ''}`, { auth: false }),
   get: (id) => api.get(`/api/cafes/${id}`, { auth: false }),
   my: () => api.get('/api/cafes/my'),
+  update: (data) => api.patch('/api/cafes/my', data),
+};
+
+export const users = {
+  updateMe: (data) => api.patch('/api/users/me', data),
 };
 
 export const games = {

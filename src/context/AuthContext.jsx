@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { auth as authApi, getToken, setToken } from '../api/client';
+import { auth as authApi, getToken, setToken, users as usersApi } from '../api/client';
 
 const USER_KEY = 'meepled.user';
 const AuthContext = createContext(null);
@@ -34,6 +34,14 @@ export function AuthProvider({ children }) {
     setUser(null);
   }
 
+  async function updateUser(data) {
+    const res = await usersApi.updateMe(data);
+    if (res.token) setToken(res.token);
+    const updated = res.user ?? { ...user, ...data };
+    setUser(updated);
+    return updated;
+  }
+
   const value = useMemo(
     () => ({
       user,
@@ -43,6 +51,7 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
+      updateUser,
     }),
     [user],
   );

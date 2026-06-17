@@ -34,10 +34,22 @@ export default function Footer() {
           </a>
         </div>
 
+        {/* BGG attribution logo */}
+        <div style={{ marginBottom: 14 }}>
+          <a href="https://boardgamegeek.com" target="_blank" rel="noreferrer">
+            <img
+              src={import.meta.env.BASE_URL + 'powered-by-bgg-rgb.svg'}
+              alt="Powered by BoardGameGeek"
+              style={{ height: 32, opacity: 0.85, transition: 'opacity .15s', verticalAlign: 'middle' }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = 1)}
+              onMouseLeave={e => (e.currentTarget.style.opacity = 0.85)}
+            />
+          </a>
+        </div>
+
         {/* Heart note */}
         <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>
-          Made with ♥ for board-game lovers everywhere &nbsp;·&nbsp; data powered by{' '}
-          <a href="https://boardgamegeek.com" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-ink)' }}>BGG</a>
+          Made with ♥ for board-game lovers everywhere
         </p>
       </div>
     </footer>

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { bgg as bggApi } from '../api/client';
 
-// Gradient palette — mirrors the prototype's GR array.
 const GR = [
   'linear-gradient(135deg,#8a5a3c,#c0623a)',
   'linear-gradient(135deg,#6b7d5a,#9aa873)',
@@ -12,7 +11,6 @@ const GR = [
   'linear-gradient(135deg,#7a4a3a,#b87a52)',
 ];
 
-// Emoji per BGG id — the 10 seeded games.
 const EMOJI = {
   13: '🏝', 822: '🏰', 30549: '🦠', 9209: '🚂',
   230802: '🟦', 68448: '🏛', 266192: '🐦',
@@ -26,38 +24,52 @@ export function gameEmoji(bggId) {
   return EMOJI[bggId] || '🎲';
 }
 
-// Module-level cache so we only call BGG once per bggId per page load.
-const bggThumbCache = {};
+// 7-day localStorage cache for BGG thumbnails. Falls back gracefully if storage is unavailable.
+const CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
+const inFlight = {}; // session-level dedup so sibling cards don't double-fetch
 
-/**
- * g = { id, gameId?, title, bggId, bggRating, minPlayers, maxPlayers, minTime, maxTime, weight, imageUrl }
- * featured = bool
- */
+function getCachedThumb(bggId) {
+  try {
+    const raw = localStorage.getItem(`bgg_img_${bggId}`);
+    if (!raw) return undefined;
+    const { url, expires } = JSON.parse(raw);
+    if (Date.now() > expires) { localStorage.removeItem(`bgg_img_${bggId}`); return undefined; }
+    return url; // may be null (known 404 — still cached to avoid retry)
+  } catch { return undefined; }
+}
+
+function setCachedThumb(bggId, url) {
+  try {
+    localStorage.setItem(`bgg_img_${bggId}`, JSON.stringify({ url, expires: Date.now() + CACHE_TTL }));
+  } catch {} // quota exceeded — ignore
+}
+
 export default function GameCard({ g, featured = false }) {
   const id    = g.gameId ?? g.id;
   const grad  = gameGrad(g.bggId);
   const emoji = gameEmoji(g.bggId);
 
-  const [thumbUrl, setThumbUrl] = useState(() => bggThumbCache[g.bggId] ?? null);
+  const [thumbUrl, setThumbUrl] = useState(() => {
+    const cached = getCachedThumb(g.bggId);
+    return (cached !== undefined ? cached : null);
+  });
 
-  // Fetch BGG thumbnail via our backend proxy (avoids CORS/401 from direct BGG calls).
   useEffect(() => {
     if (g.imageUrl || thumbUrl || !g.bggId) return;
-    if (bggThumbCache[g.bggId] !== undefined) {
-      if (bggThumbCache[g.bggId]) setThumbUrl(bggThumbCache[g.bggId]);
-      return;
-    }
-    // Mark as in-flight so sibling cards with the same bggId don't double-fetch.
-    bggThumbCache[g.bggId] = null;
+    const cached = getCachedThumb(g.bggId);
+    if (cached !== undefined) { if (cached) setThumbUrl(cached); return; }
+    if (inFlight[g.bggId]) return;
+    inFlight[g.bggId] = true;
     let cancelled = false;
     bggApi.image(g.bggId)
       .then(r => {
         if (cancelled) return;
         const url = r.thumbnailUrl || r.imageUrl || null;
-        bggThumbCache[g.bggId] = url;
+        setCachedThumb(g.bggId, url);
+        delete inFlight[g.bggId];
         if (url) setThumbUrl(url);
       })
-      .catch(() => {});
+      .catch(() => { delete inFlight[g.bggId]; });
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [g.bggId, g.imageUrl]);

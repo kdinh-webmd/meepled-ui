@@ -4,9 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { cafes as cafesApi, games as gamesApi, cafeGames as cafeGamesApi } from '../api/client';
 
 const TABS = [
-  { id: 'games',   label: t => t('gameLibrary') },
-  { id: 'menu',    label: t => t('cafeMenu')    },
-  { id: 'profile', label: t => t('aboutCafe')   },
+  { id: 'games',    label: t => t('gameLibrary') },
+  { id: 'menu',     label: t => t('cafeMenu')    },
+  { id: 'profile',  label: t => t('aboutCafe')   },
+  { id: 'location', label: _  => 'Location & Contact' },
 ];
 
 export default function CafeAdmin() {
@@ -27,6 +28,44 @@ export default function CafeAdmin() {
       .then(setCafe)
       .catch(e => setError(e.message));
   }, []);
+
+  // ── Location & Contact edit state ───────────────────────────────────────────
+  const [locForm,   setLocForm]   = useState(null); // initialized on first open
+  const [locSaving, setLocSaving] = useState(false);
+  const [locSaved,  setLocSaved]  = useState(false);
+
+  function openLocation() {
+    if (!locForm && cafe) {
+      setLocForm({
+        name:    cafe.name    ?? '',
+        address: cafe.address ?? '',
+        about:   cafe.about   ?? '',
+        hours:   cafe.hours   ?? '',
+        dayPass: cafe.dayPass ?? '',
+        contact: cafe.contact ?? '',
+        mapUrl:  cafe.mapUrl  ?? '',
+        fanpage: cafe.fanpage ?? '',
+      });
+    }
+    setTab('location');
+  }
+
+  async function saveLocation(e) {
+    e.preventDefault();
+    setLocSaving(true);
+    setLocSaved(false);
+    try {
+      await cafesApi.update(locForm);
+      const updated = await cafesApi.my();
+      setCafe(updated);
+      setLocSaved(true);
+      setTimeout(() => setLocSaved(false), 2500);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setLocSaving(false);
+    }
+  }
 
   // ── BGG search + add ─────────────────────────────────────────────────────────
   async function searchBgg(e) {
@@ -112,7 +151,7 @@ export default function CafeAdmin() {
               color: tab === id ? '#fff' : 'inherit',
               border: 'none',
             }}
-            onClick={() => setTab(id)}
+            onClick={() => id === 'location' ? openLocation() : setTab(id)}
           >
             {label(t)}
           </button>
@@ -275,7 +314,54 @@ export default function CafeAdmin() {
               </div>
             ))}
           </dl>
-          <p className="muted" style={{ marginTop: 16, fontSize: 13 }}>Profile editing coming soon.</p>
+          <button className="btn sm" style={{ marginTop: 16 }} onClick={openLocation}>
+            Edit location &amp; contact →
+          </button>
+        </div>
+      )}
+
+      {/* ══ Location & Contact Tab ══ */}
+      {tab === 'location' && locForm && (
+        <div className="card">
+          <h3 style={{ marginBottom: 16, fontFamily: 'var(--display)' }}>Location &amp; Contact</h3>
+          <form onSubmit={saveLocation} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {[
+              { key: 'name',    label: 'Café name',  type: 'text'  },
+              { key: 'address', label: 'Address',    type: 'text'  },
+              { key: 'hours',   label: 'Hours',      type: 'text', placeholder: 'e.g. Daily 10:00–22:00' },
+              { key: 'dayPass', label: 'Day pass',   type: 'text', placeholder: 'e.g. 50,000 VND' },
+              { key: 'contact', label: 'Phone',      type: 'text'  },
+              { key: 'mapUrl',  label: 'Google Maps URL', type: 'url' },
+              { key: 'fanpage', label: 'Facebook page URL', type: 'url' },
+            ].map(({ key, label, type, placeholder }) => (
+              <div key={key} className="fld">
+                <label>{label}</label>
+                <input
+                  type={type}
+                  value={locForm[key]}
+                  onChange={e => setLocForm(f => ({ ...f, [key]: e.target.value }))}
+                  placeholder={placeholder ?? ''}
+                />
+              </div>
+            ))}
+            <div className="fld">
+              <label>About</label>
+              <textarea
+                value={locForm.about}
+                onChange={e => setLocForm(f => ({ ...f, about: e.target.value }))}
+                rows={4}
+                placeholder="A few sentences about your café…"
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <button className="btn" type="submit" disabled={locSaving}>
+                {locSaving ? '…' : locSaved ? '✓ Saved' : 'Save changes'}
+              </button>
+              <button className="btn ghost sm" type="button" onClick={() => setTab('profile')}>
+                Cancel
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

@@ -18,6 +18,35 @@ function cafeGrad(name) { return GR[(name?.charCodeAt(0) ?? 0) % GR.length]; }
 function avColor(name)  { return AV[(name?.charCodeAt(0) ?? 0) % AV.length]; }
 const starStr = n => '★★★★★'.slice(0, Math.round(n)) + '☆☆☆☆☆'.slice(0, 5 - Math.round(n));
 
+// Returns true/false/null (unknown). Computes against Vietnam time UTC+7.
+// hours formats: "Daily 9:00–23:00", "Tue–Sun 13:00–23:00"
+function computeOpenStatus(hours) {
+  if (!hours) return null;
+  const now = new Date();
+  const vn  = new Date(now.getTime() + 7 * 60 * 60 * 1000); // shift to UTC+7
+  const hh  = vn.getUTCHours(), mm = vn.getUTCMinutes();
+  const cur = hh * 60 + mm;
+  const day = vn.getUTCDay(); // 0=Sun..6=Sat
+
+  const tm = hours.match(/(\d{1,2}):(\d{2})\s*[–\-]\s*(\d{1,2}):(\d{2})/);
+  if (!tm) return null;
+  const open  = +tm[1] * 60 + +tm[2];
+  const close = +tm[3] * 60 + +tm[4];
+
+  const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dm = hours.match(/^([A-Za-z]{3})\s*[–\-]\s*([A-Za-z]{3})/i);
+  if (dm) {
+    const s = DAYS.findIndex(d => d.toLowerCase() === dm[1].toLowerCase());
+    const e = DAYS.findIndex(d => d.toLowerCase() === dm[2].toLowerCase());
+    if (s >= 0 && e >= 0) {
+      const inRange = s <= e ? day >= s && day <= e : day >= s || day <= e;
+      if (!inRange) return false;
+    }
+  }
+
+  return cur >= open && cur < close;
+}
+
 export default function CafeLibrary() {
   const { id }  = useParams();
   const { t }   = useTranslation();
@@ -78,7 +107,16 @@ export default function CafeLibrary() {
           {cafe.coverUrl
             ? <img src={cafe.coverUrl} alt={cafe.name} />
             : <span className="initial">{initial}</span>}
-          {cafe.hours && <span className="openpill">Open · {cafe.hours}</span>}
+          {cafe.hours && (() => {
+            const open = computeOpenStatus(cafe.hours);
+            return (
+              <span className="openpill" style={{
+                background: open === true ? '#2e7d32' : open === false ? '#c62828' : '#5b4636',
+              }}>
+                {open === true ? 'Open' : open === false ? 'Closed' : '—'} · {cafe.hours}
+              </span>
+            );
+          })()}
         </div>
 
         <div className="cafe-info">
